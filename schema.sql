@@ -3,13 +3,13 @@ CREATE DATABASE IF NOT EXISTS ecommerce;
 USE ecommerce;
 
 -- Categories table
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- Products table
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   category_id INT UNSIGNED NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -22,13 +22,13 @@ CREATE TABLE products (
 );
 
 -- Tags table
-CREATE TABLE tags (
+CREATE TABLE IF NOT EXISTS tags (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL UNIQUE
 );
 
 -- Product-Tags junction table (many-to-many)
-CREATE TABLE product_tags (
+CREATE TABLE IF NOT EXISTS product_tags (
   product_id INT UNSIGNED NOT NULL,
   tag_id INT UNSIGNED NOT NULL,
   PRIMARY KEY (product_id, tag_id),
@@ -41,7 +41,7 @@ CREATE TABLE product_tags (
 -- database requires all indexed vector columns to be NOT NULL). Sample
 -- reviews are inserted WITHOUT embeddings and get their embeddings later
 -- via the Process Reviews button.
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   product_id INT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE reviews (
 );
 
 -- Users table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(100) NOT NULL UNIQUE,
@@ -66,7 +66,7 @@ CREATE TABLE users (
 );
 
 -- Chat sessions table: each row is one conversation thread
-CREATE TABLE chat_sessions (
+CREATE TABLE IF NOT EXISTS chat_sessions (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   admin_id INT UNSIGNED NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE chat_sessions (
 );
 
 -- Chat messages table: each row is one message within a session
-CREATE TABLE chat_messages (
+CREATE TABLE IF NOT EXISTS chat_messages (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   session_id INT UNSIGNED NOT NULL,
   role ENUM('human', 'ai') NOT NULL,
@@ -85,12 +85,12 @@ CREATE TABLE chat_messages (
   FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
 );
 
-CREATE TABLE marketing_preferences (
+CREATE TABLE IF NOT EXISTS marketing_preferences (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   preference VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE user_marketing_preferences (
+CREATE TABLE IF NOT EXISTS user_marketing_preferences (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   preference_id INT UNSIGNED NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE user_marketing_preferences (
 );
 
 -- Cart Items table
-CREATE TABLE cart_items (
+CREATE TABLE IF NOT EXISTS cart_items (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   product_id INT UNSIGNED NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE cart_items (
 );
 
 -- Orders table
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
   total DECIMAL(10, 2) NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE orders (
 );
 
 -- Order Items table
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   order_id INT UNSIGNED NOT NULL,
   product_id INT UNSIGNED NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE order_items (
 );
 
 -- Documents table (one-to-one with products)
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   product_id INT UNSIGNED NOT NULL UNIQUE,
   content TEXT NULL,
@@ -143,7 +143,7 @@ CREATE TABLE documents (
 -- Document Chunks table (one-to-many with documents)
 -- NOTE: embedding is NOT NULL — unlike reviews, no rows exist before
 -- chunking/embedding runs, so this can be enforced from the start.
-CREATE TABLE document_chunks (
+CREATE TABLE IF NOT EXISTS document_chunks (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   document_id INT UNSIGNED NOT NULL,
   chunk_text TEXT NOT NULL,

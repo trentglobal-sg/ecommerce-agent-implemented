@@ -1,7 +1,7 @@
 USE ecommerce;
 
 -- Categories
-INSERT INTO categories (name) VALUES
+INSERT IGNORE INTO categories (name) VALUES
 ('Vitamins & Minerals'),
 ('Sports Nutrition'),
 ('Heart Health'),
@@ -10,7 +10,7 @@ INSERT INTO categories (name) VALUES
 ('Sleep Support');
 
 -- Products (with category_id)
-INSERT INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
+INSERT IGNORE INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
 (1, 'Nature Made Multi for Him', 'Nature Made', 29.99, 'https://www.naturemade.com/cdn/shop/files/NM1789PK001929MULTIFORHIM_5A007225ccfront_1500x.png?v=1756999774', 'Daily multivitamin with 25+ vitamins and minerals for overall health and wellness', 150),
 (2, 'Gold Standard 100% Whey Protein', 'Optimum Nutrition', 49.99, 'https://www.optimumnutrition.com/cdn/shop/files/US_GSW_5LB_FrenchVanCr_FOP.png?v=1781190678&width=1400', 'High-quality protein powder for muscle building and post-workout recovery', 100),
 (3, 'Nature Made Fish Oil 1200mg', 'Nature Made', 24.99, 'https://www.naturemade.com/cdn/shop/files/NM1328PK000745FISHOIL_5A009400ccfront_1500x.png?v=1695678265', 'Heart-healthy omega-3 fatty acids EPA and DHA for cardiovascular support', 200),
@@ -19,7 +19,7 @@ INSERT INTO products (category_id, name, brand, price, imageUrl, description, st
 (6, 'Natrol Melatonin 5mg', 'Natrol', 14.99, 'https://www.natrol.com/cdn/shop/files/4837.931_Melatonin_5mg_TR_100ct_150ccLabel_Front_DS.png?v=1745966369&width=700', 'Natural sleep aid to help regulate sleep cycle and improve rest quality', 250);
 
 -- Tags
-INSERT INTO tags (name) VALUES
+INSERT IGNORE INTO tags (name) VALUES
 ('adult'),
 ('multivitamin'),
 ('athlete'),
@@ -34,7 +34,7 @@ INSERT INTO tags (name) VALUES
 ('melatonin');
 
 -- Product-Tag associations
-INSERT INTO product_tags (product_id, tag_id) VALUES
+INSERT IGNORE INTO product_tags (product_id, tag_id) VALUES
 (1, 1), (1, 2),        -- Multivitamin: adult, multivitamin
 (2, 3), (2, 4),        -- Whey: athlete, protein
 (3, 5), (3, 6),        -- Fish Oil: cardio, omega-3
@@ -42,17 +42,17 @@ INSERT INTO product_tags (product_id, tag_id) VALUES
 (5, 9), (5, 10), (5, 7), -- Probiotic: probiotic, gut, immune
 (6, 11), (6, 12);      -- Melatonin: sleep, melatonin
 
-INSERT INTO users (name, email, password, salutation, country, role) VALUES
+INSERT IGNORE INTO users (name, email, password, salutation, country, role) VALUES
 ('Admin User', 'admin@example.com', '$2b$10$wfKRyY4X//rui5Zye9wRGeJPaQg2WUu/FMSzvudlEXx9Rd.rsJv66', 'Mr', 'USA', 'admin'),  -- password: admin123
 ('John Doe', 'john@example.com', '$2b$10$RyoQaDS.vDwi7IPiW6TitO9m3qZft/hlvfAhdnk/IStkSmYzwGJlO', 'Mr', 'USA', 'user'),      -- password: user123
 ('Jane Smith', 'jane@example.com', '$2b$10$RyoQaDS.vDwi7IPiW6TitO9m3qZft/hlvfAhdnk/IStkSmYzwGJlO', 'Ms', 'UK', 'user'),     -- password: user123
 ('Bob Johnson', 'bob@example.com', '$2b$10$RyoQaDS.vDwi7IPiW6TitO9m3qZft/hlvfAhdnk/IStkSmYzwGJlO', 'Mr', 'Canada', 'user'); -- password: user123
 
-INSERT INTO marketing_preferences (id, preference) VALUES
+INSERT IGNORE INTO marketing_preferences (id, preference) VALUES
 (1, 'Email Marketing'),
 (2, 'SMS Marketing');
 
-INSERT INTO user_marketing_preferences (user_id, preference_id) VALUES
+INSERT IGNORE INTO user_marketing_preferences (user_id, preference_id) VALUES
 (1, 1),
 (1, 2),
 (2, 1),
@@ -78,7 +78,7 @@ INSERT INTO order_items (order_id, product_id, quantity) VALUES
 -- Sample reviews
 SET @empty_embedding = VEC_FromText(CONCAT('[', REPEAT('0,', 3071), '0]'));
 
-INSERT INTO reviews (product_id, title, review_text, review_date, rating, embedding) VALUES
+INSERT IGNORE INTO reviews (product_id, title, review_text, review_date, rating, embedding) VALUES
 (1, 'Great daily multivitamin', 'I have been taking Nature Made Multi for Him for about six months now and I genuinely notice a difference in my energy levels throughout the day. The tablet is easy to swallow and does not cause any stomach upset when taken with breakfast. I appreciate that it does not contain iron since most men do not need extra iron supplementation. The USP verification gives me confidence that what is on the label is actually in the pill. Would definitely recommend to any man looking for a solid all-in-one daily vitamin.', '2026-01-15', 5, @empty_embedding),
 (1, 'Decent multivitamin but nothing special', 'This is a reliable multivitamin that covers all the basics. I take it every morning with my coffee and have not had any issues with it. The vitamin D content is higher than most which is a plus since many people are deficient. My only complaint is that the tablet is a bit large compared to other brands I have tried. The price is reasonable for what you get and the Nature Made brand has a good reputation for quality. Three stars because I have not noticed any dramatic changes but it seems to be doing its job quietly.', '2026-02-20', 3, @empty_embedding),
 (1, 'My go-to multivitamin', 'Switched to this from a more expensive brand and honestly cannot tell the difference in how I feel. The B vitamin complex in this formula really does seem to help with afternoon energy slumps. I like that it is gluten free and does not have artificial colors. Been using Nature Made products for years and they have never let me down. Will keep buying.', '2026-03-10', 4, @empty_embedding),
@@ -99,18 +99,18 @@ INSERT INTO reviews (product_id, title, review_text, review_date, rating, embedd
 (6, 'Effective but 5mg might be too much for some', 'This product works very well for sleep but I want to note that the 5mg dose is quite high. Research suggests that much lower doses of 0.5 to 1mg are often equally effective for most people. I find that 5mg leaves me feeling slightly groggy the next morning if I do not get at least 8 hours of sleep. That said the time release mechanism is excellent and for people with significant insomnia this dose may be appropriate. Consider cutting the tablet in half if you are sensitive to melatonin.', '2026-03-30', 3, @empty_embedding);
 
 -- Additional low-stock products
-INSERT INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
+INSERT IGNORE INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
 (2, 'DemoFuel Creatine Monohydrate', 'DemoFuel', 39.99, 'https://example.com/images/creatine.png', 'Creatine monohydrate powder for strength and exercise performance', 8);
 SET @creatine_product_id = LAST_INSERT_ID();
 
-INSERT INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
+INSERT IGNORE INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
 (4, 'DemoHealth Zinc + Vitamin C', 'DemoHealth', 9.99, 'https://example.com/images/zinc-vitamin-c.png', 'Zinc and vitamin C supplement for immune system support', 3);
 SET @zinc_product_id = LAST_INSERT_ID();
 
 -- Gold Standard 100% Whey - Double Rich Chocolate (flavor variant of product 2)
 -- Added here because later review data references reviews for this product;
 -- the original inserts only covered the French Vanilla Creme flavor.
-INSERT INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
+INSERT IGNORE INTO products (category_id, name, brand, price, imageUrl, description, stock) VALUES
 (2, 'Gold Standard 100% Whey Protein - Double Rich Chocolate', 'Optimum Nutrition', 49.99, 'https://www.optimumnutrition.com/cdn/shop/files/US_GSW_5LB_DblRichChoc_FOP.png?v=1781190678&width=1400', 'High-quality protein powder for muscle building and post-workout recovery, chocolate flavor', 100);
 SET @choc_whey_product_id = LAST_INSERT_ID();
 
@@ -175,7 +175,7 @@ INSERT INTO order_items (order_id, product_id, quantity) VALUES
 -- to match the actual insert order above)
 -- ============================================================
 
-INSERT INTO reviews (product_id, title, review_text, review_date, rating, embedding) VALUES
+INSERT IGNORE INTO reviews (product_id, title, review_text, review_date, rating, embedding) VALUES
 -- Gold Standard 100% Whey Double Rich Chocolate (Optimum Nutrition) - mostly positive
 (@choc_whey_product_id, 'Best chocolate protein I have tried', 'Rich, chocolatey, and mixes smooth with just a shaker bottle. This has become my go-to post-workout shake.', '2026-01-04', 5, @empty_embedding),
 (@choc_whey_product_id, 'Tastes like a milkshake', 'Hard to believe this is a protein powder and not dessert. Blends great with almond milk and ice.', '2026-01-12', 5, @empty_embedding),
@@ -231,7 +231,7 @@ INSERT INTO reviews (product_id, title, review_text, review_date, rating, embedd
 -- Additional reviews: expanded coverage for original 6 products
 -- ============================================================
 
-INSERT INTO reviews (product_id, title, review_text, review_date, rating, embedding) VALUES
+INSERT IGNORE INTO reviews (product_id, title, review_text, review_date, rating, embedding) VALUES
 -- Nature Made Multi for Him (product 1) - 20 reviews, ~70% positive
 (1, 'Morning energy stays high', 'Taking this with breakfast keeps me alert through long shifts and I rarely crash.', '2026-01-05', 5, @empty_embedding),
 (1, 'Easy on my stomach', 'Unlike other multis this one never upsets my stomach, even before workouts.', '2026-01-15', 4, @empty_embedding),

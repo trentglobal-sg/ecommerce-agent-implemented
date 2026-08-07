@@ -5,6 +5,9 @@ const documentServices = require('../services/documentServices');
 const multer = require('multer');
 const path = require('path');
 
+const { model, modelWithSearch } = require('../../gemini');
+const { z } = require('zod');
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(process.cwd(), 'uploads'));
@@ -59,7 +62,44 @@ router.post('/', ensureAdmin, upload.single('pdf'), async (req, res) => {
 
 // Generate product listing from natural language
 router.post('/ai/generate', ensureAdmin, express.json(), async (req, res) => {
-  // TODO
+  try {
+    const { message } = req.body;
+    console.log(message);
+
+    // Fetch valid categories and tags from the database
+    const categories = await productServices.getAllCategories();
+    const tags = await productServices.getAllTags();
+
+    // Define the output schema using Zod
+    const productSchema = z.object({
+      name: z.string(),
+      brand: z.string(),
+      price: z.number(),
+      description: z.string(),
+      category_id: z.number().describe(
+        `Must be one of: ${categories.map(c => `${c.id} (${c.name})`).join(', ')}`
+      ),
+      tag_ids: z.array(z.number()).describe(
+        `Must be from: ${tags.map(t => `${t.id} (${t.name})`).join(', ')}`
+      )
+    });
+
+    // Create a structured model that outputs valid product objects
+    const structuredModel = model.withStructuredOutput(productSchema);
+
+    console.log("Querying gemini...");
+
+    // Generate the product from natural language
+    const response = await structuredModel.invoke(
+      `Generate a product listing from this description: ${message}`
+    );
+    console.log(response);
+
+    res.json(response);
+  } catch (error) {
+    console.error('AI product generation error:', error);
+    res.status(500).json({ error: 'Failed to generate product listing' });
+  }
 });
 
 // view product detail with reviews
@@ -119,8 +159,35 @@ router.post('/:id/ask', ensureAdmin, express.json(), async (req, res) => {
 });
 
 // Generate AI summary of online reviews
+/**
+ * @route GET /admin/products/:id/reviews
+ * @description Generate AI summary of online reviews for a product
+ * @returns {Object} { summary: string, error: string }
+ */
 router.get('/:id/reviews', ensureAdmin, async (req, res) => {
-  // TODO
+  try {
+    const product = await productServices.getProductById(req.params.id);
+    if (!product) {
+      return res.status(404).send('Product not found');
+    }
+
+    const response = await modelWithSearch.invoke(`Search for customer reviews of "${product.name}" by "${product.brand}".
+       Summarize what customers are saying about this product in 3-4 sentences.
+       Focus on common praise, complaints, and overall sentiment.`)
+
+
+    res.json({
+      summary: response.content,
+      error: null
+    })
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({
+      summary: null,
+      error: e.message
+    });
+  }
 });
 
 // generate embeddings for this product's reviews
