@@ -56,6 +56,7 @@ router.get('/', ensureAdmin, async (req, res) => {
       text: m.content,
       role: m._getType() === 'human' ? 'user' : 'bot',
       side: m._getType() === 'human' ? 'right' : 'left',
+      chart: m.chartConfig || null,
     }));
   }
 
@@ -69,15 +70,20 @@ router.get('/', ensureAdmin, async (req, res) => {
 
 // Create a new chat session
 router.post('/sessions', ensureAdmin, express.json(), async (req, res) => {
-  const adminId = req.session.admin.id;
-  const title = new Date().toLocaleString();
+  try {
+    const adminId = req.session.admin.id;
+    const title = new Date().toLocaleString();
 
-  const [result] = await pool.execute(
-    `INSERT INTO chat_sessions (admin_id, title) VALUES (?, ?)`,
-    [adminId, title]
-  );
+    const [result] = await pool.execute(
+      'INSERT INTO chat_sessions (admin_id, title) VALUES (?, ?)',
+      [adminId, title]
+    );
 
-  res.json({ sessionId: result.insertId });
+    res.status(201).json({ sessionId: result.insertId });
+  } catch (error) {
+    console.error('Error creating chat session:', error);
+    res.status(500).json({ error: 'Failed to create chat session.' });
+  }
 });
 
 // Delete a chat session and all its messages
@@ -114,7 +120,7 @@ router.post('/api', ensureAdmin, express.json(), async (req, res) => {
       { configurable: { sessionId } }
     );
 
-    res.json({reply, chart });
+    res.json({ reply, chart });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ reply: 'Sorry, something went wrong.' });
