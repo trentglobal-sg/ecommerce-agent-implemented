@@ -37,10 +37,9 @@ CREATE TABLE IF NOT EXISTS product_tags (
 );
 
 -- Reviews table
--- NOTE: embedding is nullable, and therefore has no VECTOR INDEX (the
--- database requires all indexed vector columns to be NOT NULL). Sample
--- reviews are inserted WITHOUT embeddings and get their embeddings later
--- via the Process Reviews button.
+-- NOTE: reviews receive a zero-vector placeholder before their embeddings
+-- are generated via the Process Reviews button, allowing vector indexing
+-- from the start.
 CREATE TABLE IF NOT EXISTS reviews (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   product_id INT UNSIGNED NOT NULL,
@@ -48,9 +47,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   review_text TEXT NOT NULL,
   review_date DATE NOT NULL,
   rating TINYINT UNSIGNED NOT NULL,
-  embedding VECTOR(3072) COMMENT 'Vector embeddings from Gemini',
+  embedding VECTOR(3072) NOT NULL COMMENT 'Vector embeddings from Gemini',
   CONSTRAINT chk_rating_range CHECK (rating BETWEEN 1 AND 5),
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  VECTOR INDEX (embedding)
 );
 
 -- Users table
