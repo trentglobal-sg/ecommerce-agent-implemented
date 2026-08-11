@@ -115,12 +115,12 @@ router.post('/api', ensureAdmin, express.json(), async (req, res) => {
       return res.status(404).json({ reply: 'Chat session not found.', chart: null });
     }
 
-    const { reply, chart } = await runAgent(
+    const { reply, chart, plan } = await runAgent(
       { input: text },
       { configurable: { sessionId } }
     );
 
-    res.json({ reply, chart });
+    res.json({ reply, chart, plan });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ reply: 'Sorry, something went wrong.' });
