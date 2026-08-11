@@ -13,6 +13,13 @@ const {
   generateApexChartTool,
 } = require("./admin/tools/chartTools");
 
+const { searchProductBySemanticTool, answerProductQuestionTool } = require('./admin/tools/ragTools');
+const {
+  getProductReviewsTool,
+  searchProductReviewsTool,
+  getReviewSentimentPolesTool
+} = require('./admin/tools/reviewTools');
+
 const model = new ChatGoogle({
   model: "gemini-3.1-flash-lite",
   apiKey: process.env.GEMINI_API_KEY,
@@ -33,6 +40,11 @@ const tools = [
   getLowStockTool,
   getToday,
   generateApexChartTool,
+  searchProductBySemanticTool,
+  answerProductQuestionTool,
+  getProductReviewsTool,
+  searchProductReviewsTool,
+  getReviewSentimentPolesTool,
 ];
 
 const modelWithTools = new ChatGoogle({

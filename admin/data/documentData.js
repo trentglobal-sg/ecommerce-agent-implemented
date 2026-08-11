@@ -44,7 +44,28 @@ async function searchDistinctProductEmbeddings(
   queryEmbedding,
   limit = 5
 ) {
-  // TODO
+  const vectorString = `[${queryEmbedding.join(',')}]`;
+
+  const [rows] = await pool.execute(
+    `SELECT p.id AS product_id,
+            p.name AS product_name,
+            p.brand,
+            MIN(
+              VEC_DISTANCE(
+                dc.embedding,
+                VEC_FromText('${vectorString}')
+              )
+            ) AS distance
+     FROM document_chunks dc
+     JOIN documents d ON dc.document_id = d.id
+     JOIN products p ON d.product_id = p.id
+     GROUP BY p.id, p.name, p.brand
+     ORDER BY distance ASC
+     LIMIT ?`,
+    [limit]
+  );
+
+  return rows;
 }
 
 

@@ -6,7 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const ensureAdmin = require('../middlewares/ensureAdmin');
 const { extractTextFromPDF, chunkText, generateEmbedding } = require("../services/embeddingServices");
-const { getPoleEmbeddings } = require('../modules/generatePoleEmbeddings');
+const { getPoleEmbeddings } = require('../modules/getPoleEmbeddings.js');
 
 const { model, modelWithSearch } = require('../../gemini');
 const { z } = require('zod');
