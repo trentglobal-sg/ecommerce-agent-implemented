@@ -1,24 +1,25 @@
 const { HumanMessage } = require('@langchain/core/messages');
-const { agent } = require('../../gemini');
+const { agent, thinkingAgent } = require('../../gemini');
 const { MariaDBChatHistory } = require('./MariaDBHistory');
 const { extractText, extractPlan, isRecursionLimitError } = require('./agentHelpers');
 const { takeChartConfig } = require('../tools/chartTools');
+const { takeThoughts } = require('./thoughts');
 
 
-
-async function runAgent(input, config) {
+async function runAgent(input, config, thinking = false) {
   const { sessionId } = config.configurable;
   const history = new MariaDBChatHistory(sessionId);
   const pastMessages = await history.getMessages();
 
   let response;
+  const activeAgent = thinking ? thinkingAgent : agent;
   try {
     // The agent runs the full tool-calling loop internally.
     // 25 steps (the default) is not enough once planning is involved.
     // Note the ...config: the second argument REPLACES the run's config,
     // so without it we would lose configurable.sessionId — and the chart
     // tool would have no key to store its chart under.
-    response = await agent.invoke(
+    response = await activeAgent.invoke(
       { messages: [...pastMessages, new HumanMessage(input.input)] },
       { ...config, recursionLimit: 50 }
     );
@@ -35,20 +36,38 @@ async function runAgent(input, config) {
     throw error;  // Some other error — let the route's error handler deal with it
   }
 
-  // The chart tool stored its config server-side during the run (step 6).
-  // takeChartConfig also removes it, so a stale chart never leaks into the next run.
-  const chart = takeChartConfig(sessionId);
+  return await finalizeRun(history, response, sessionId, input.input);
+}
 
-  const lastMessage = response.messages[response.messages.length - 1];
-  const reply = extractText(lastMessage.content) || '(no reply)';
+/**
+ * Finalize the agent run by extracting the chart, plan, and thoughts from the response
+ * and saving the user and AI messages to the history.
+ * @param {MariaDBChatHistory} history - The chat history object
+ * @param {Object} response - The response from the agent
+ * @param {string} sessionId - The session ID
+ * @param {string} input - The user input
+ * @returns {Object} - The reply, chart, plan, and thoughts
+ */
+async function finalizeRun(history, response, sessionId, input) {
 
-  // The plan lives in the agent state, not in the message list
-  const plan = extractPlan(response.todos);
 
-  await history.addUserMessage(input.input);
-  await history.addAIChatMessage(reply, chart);
+    // The chart tool stored its config server-side during the run (step 6).
+    // takeChartConfig also removes it, so a stale chart never leaks into the next run.
+    const chart = takeChartConfig(sessionId);
 
-  return { reply, chart, plan };
+    const lastMessage = response.messages[response.messages.length - 1];
+    const reply = extractText(lastMessage.content) || '(no reply)';
+
+    // The plan lives in the agent state, not in the message list
+    const plan = extractPlan(response.todos);
+
+    const thoughts = takeThoughts(sessionId);
+
+    await history.addUserMessage(input);
+    await history.addAIChatMessage(reply, chart);
+
+    return { reply, chart, plan, thoughts };
+
 }
 
 module.exports = { runAgent };

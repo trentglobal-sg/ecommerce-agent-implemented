@@ -12,20 +12,7 @@ const ensureAdmin = require('../middlewares/ensureAdmin');
 const { MariaDBChatHistory } = require('../modules/MariaDBHistory');
 const { runAgent } = require('../modules/runAgent');
 
-const prompt = ChatPromptTemplate.fromMessages([
-  ['system', 'You are a helpful admin assistant for an ecommerce store. Format your responses using markdown.'],
-  new MessagesPlaceholder('history'),
-  ['human', '{input}'],
-]);
-
-const chain = prompt.pipe(model);
-
-const chainWithHistory = new RunnableWithMessageHistory({
-  runnable: chain,
-  getMessageHistory: (sessionId) => new MariaDBChatHistory(sessionId),
-  inputMessagesKey: 'input',
-  historyMessagesKey: 'history',
-});
+const { runAgentStream } = require('../modules/runAgentStream');
 
 
 //  routes will go here
@@ -98,7 +85,7 @@ router.post('/sessions/:id/delete', ensureAdmin, async (req, res) => {
 
 router.post('/api', ensureAdmin, express.json(), async (req, res) => {
   try {
-    const { message, sessionId: requestedSessionId } = req.body || {};
+    const { message, sessionId: requestedSessionId, thinking } = req.body || {};
     const text = (message || '').toString().trim();
     if (!text) return res.json({ reply: 'Please type something.' });
 
@@ -115,12 +102,13 @@ router.post('/api', ensureAdmin, express.json(), async (req, res) => {
       return res.status(404).json({ reply: 'Chat session not found.', chart: null });
     }
 
-    const { reply, chart, plan } = await runAgent(
+    const { reply, chart, plan, thoughts } = await runAgent(
       { input: text },
-      { configurable: { sessionId } }
+      { configurable: { sessionId } },
+      thinking
     );
 
-    res.json({ reply, chart, plan });
+    res.json({ reply, chart, plan, thoughts });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ reply: 'Sorry, something went wrong.' });

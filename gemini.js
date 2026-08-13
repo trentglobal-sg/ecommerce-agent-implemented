@@ -26,6 +26,8 @@ const {
   getCurrentDateTimeTool
 } = require('./admin/tools/planningTools');
 
+const { thoughtMiddleware, takeThoughts } = require('./admin/modules/thoughts');
+
 
 const model = new ChatGoogle({
   model: "gemini-3.1-flash-lite",
@@ -84,9 +86,17 @@ const agent = createAgent({
   middleware: [todoListMiddleware()],
 });
 
+const thinkingAgent = createAgent({
+  model,
+  tools,
+  systemPrompt: prompt,
+  middleware: [todoListMiddleware(), thoughtMiddleware],
+});
+
 module.exports = {
   model,
   modelWithSearch,
   modelWithTools,
   agent,
+  thinkingAgent
 };
