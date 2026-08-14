@@ -10,10 +10,12 @@ const ensureAdmin = require('../middlewares/ensureAdmin');
 
 // setup for AI Stuff
 const { MariaDBChatHistory } = require('../modules/MariaDBHistory');
-const { runAgent } = require('../modules/runAgent');
+const { runAgent, resumeAgent } = require('../modules/runAgent');
 
 const { runAgentStream } = require('../modules/runAgentStream');
 
+// add the following imports after the other requires
+const { hasPendingApproval, parseDecision } = require('../modules/approval');
 
 //  routes will go here
 router.get('/', ensureAdmin, async (req, res) => {
@@ -94,6 +96,16 @@ router.post('/api', ensureAdmin, express.json(), async (req, res) => {
       return res.status(400).json({ reply: 'A valid chat session is required.', chart: null });
     }
 
+    // check if the session has a pending approval
+    if (hasPendingApproval(sessionId)) {
+      const decisions = parseDecision(text);
+      if (!decisions) {
+        return res.json({ reply: 'Please reply *yes* to approve or *no* to reject.' });
+      }
+      const result = await resumeAgent(sessionId, decisions);
+      return res.json(result);
+    }
+
     const [sessions] = await pool.execute(
       'SELECT id FROM chat_sessions WHERE id = ? AND admin_id = ?',
       [sessionId, req.session.admin.id]
@@ -101,6 +113,9 @@ router.post('/api', ensureAdmin, express.json(), async (req, res) => {
     if (sessions.length === 0) {
       return res.status(404).json({ reply: 'Chat session not found.', chart: null });
     }
+
+
+
 
     const { reply, chart, plan, thoughts } = await runAgent(
       { input: text },
@@ -115,7 +130,6 @@ router.post('/api', ensureAdmin, express.json(), async (req, res) => {
   }
 });
 
-// admin/routes/chat.js
 
 // Streaming version of POST /api: same request body, but the response is a
 // Server-Sent Events stream instead of one JSON object

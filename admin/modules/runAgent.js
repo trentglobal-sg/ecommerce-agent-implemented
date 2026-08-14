@@ -6,6 +6,11 @@ const { takeChartConfig } = require('../tools/chartTools');
 const { takeThoughts } = require('./thoughts');
 
 
+const { Command } = require('@langchain/langgraph');
+const { setPendingApproval, takePendingApproval, approvalReply } = require('./approval');
+const { randomUUID } = require('crypto');
+
+
 async function runAgent(input, config, thinking = false) {
   const { sessionId } = config.configurable;
   const history = new MariaDBChatHistory(sessionId);
@@ -13,6 +18,17 @@ async function runAgent(input, config, thinking = false) {
 
   let response;
   const activeAgent = thinking ? thinkingAgent : agent;
+
+  const threadId = randomUUID();
+  const runConfig = {
+    ...config,
+    configurable: {
+      ...config.configurable,
+      thread_id: threadId,
+    },
+    recursionLimit: 50,
+  };
+
   try {
     // The agent runs the full tool-calling loop internally.
     // 25 steps (the default) is not enough once planning is involved.
@@ -21,7 +37,7 @@ async function runAgent(input, config, thinking = false) {
     // tool would have no key to store its chart under.
     response = await activeAgent.invoke(
       { messages: [...pastMessages, new HumanMessage(input.input)] },
-      { ...config, recursionLimit: 50 }
+      runConfig
     );
   } catch (error) {
     if (isRecursionLimitError(error)) {
@@ -34,6 +50,12 @@ async function runAgent(input, config, thinking = false) {
       return { reply, chart: null, plan: null };
     }
     throw error;  // Some other error — let the route's error handler deal with it
+  }
+
+  if (response.__interrupt__) {
+    // save thread_id for later resume, including the thinking flag and input
+    setPendingApproval(sessionId, { threadId, thinking, input: input.input });
+    return { reply: approvalReply(response.__interrupt__[0].value), chart: null, plan: null, thoughts: null };
   }
 
   return await finalizeRun(history, response, sessionId, input.input);
@@ -51,23 +73,51 @@ async function runAgent(input, config, thinking = false) {
 async function finalizeRun(history, response, sessionId, input) {
 
 
-    // The chart tool stored its config server-side during the run (step 6).
-    // takeChartConfig also removes it, so a stale chart never leaks into the next run.
-    const chart = takeChartConfig(sessionId);
+  // The chart tool stored its config server-side during the run (step 6).
+  // takeChartConfig also removes it, so a stale chart never leaks into the next run.
+  const chart = takeChartConfig(sessionId);
 
-    const lastMessage = response.messages[response.messages.length - 1];
-    const reply = extractText(lastMessage.content) || '(no reply)';
+  const lastMessage = response.messages[response.messages.length - 1];
+  const reply = extractText(lastMessage.content) || '(no reply)';
 
-    // The plan lives in the agent state, not in the message list
-    const plan = extractPlan(response.todos);
+  // The plan lives in the agent state, not in the message list
+  const plan = extractPlan(response.todos);
 
-    const thoughts = takeThoughts(sessionId);
+  const thoughts = takeThoughts(sessionId);
 
-    await history.addUserMessage(input);
-    await history.addAIChatMessage(reply, chart);
+  await history.addUserMessage(input);
+  await history.addAIChatMessage(reply, chart);
 
-    return { reply, chart, plan, thoughts };
+  return { reply, chart, plan, thoughts };
 
 }
 
-module.exports = { runAgent };
+async function resumeAgent(sessionId, decisions) {
+  const history = new MariaDBChatHistory(sessionId );
+  const pending = takePendingApproval(sessionId);
+  if (!pending) {
+    throw new Error('No pending approval found for this session');
+  }
+
+  const activeAgent = pending.thinking ? thinkingAgent : agent;
+  const resumeCommand = new Command({
+    resume: {
+      decisions: Array.isArray(decisions) ? decisions : [decisions]
+    }
+  });
+
+  const response = await activeAgent.invoke(resumeCommand, {
+    configurable: { sessionId, thread_id: pending.threadId },
+    recursionLimit: 50
+  });
+
+  // in case there are more interrupts
+  if (response.__interrupt__) {
+    setPendingApproval(sessionId, pending);
+    return { reply: approvalReply(response.__interrupt__[0].value), chart: null, plan: null, thoughts: null };
+  }
+
+  return await finalizeRun(history, response, sessionId, pending.input);
+}
+
+module.exports = { runAgent, resumeAgent };
