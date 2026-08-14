@@ -125,6 +125,17 @@ class StreamingAgent {
             if (initialState?.values?.todos) {
                 this.lastPlanText = extractPlan(initialState.values.todos) || '';
             }
+
+            // If there's a pending interrupt for write_todos, we've already shown it as a "Proposed plan".
+            // Set lastPlanText so processPlan doesn't stream it again when the tool finally runs.
+            const interrupts = (initialState.tasks || []).flatMap(t => t.interrupts || []);
+            for (const interrupt of interrupts) {
+                for (const action of (interrupt.value?.actionRequests || [])) {
+                    if (action.args?.todos) {
+                        this.lastPlanText = extractPlan(action.args.todos) || '';
+                    }
+                }
+            }
         } catch (_) {
 
         }
