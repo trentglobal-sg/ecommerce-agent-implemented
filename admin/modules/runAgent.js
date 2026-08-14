@@ -11,6 +11,14 @@ const { setPendingApproval, takePendingApproval, approvalReply } = require('./ap
 const { randomUUID } = require('crypto');
 
 
+
+/**
+ * 
+ * @param {*} input 
+ * @param {*} config 
+ * @param {*} thinking 
+ * @returns 
+ */
 async function runAgent(input, config, thinking = false) {
   const { sessionId } = config.configurable;
   const history = new MariaDBChatHistory(sessionId);

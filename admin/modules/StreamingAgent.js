@@ -4,6 +4,7 @@ const { MariaDBChatHistory } = require('./MariaDBHistory');
 const { extractText, extractPlan, isRecursionLimitError } = require('./agentHelpers');
 const { takeChartConfig } = require('../tools/chartTools');
 const { takeThoughts, peekThoughts } = require('./thoughts');
+const { setPendingApproval, approvalReply } = require('./approval');
 
 function extractReplyText(content) {
     if (Array.isArray(content)) {
@@ -117,6 +118,18 @@ class StreamingAgent {
 
     async run() {
         const stream = this.activeAgent.streamEvents(this.streamInput, this.runConfig);
+
+        // prevent the plan from a previous run of the agent from being sent again
+        try {
+            const initialState = await this.activeAgent.getState(this.runConfig);
+            if (initialState?.values?.todos) {
+                this.lastPlanText = extractPlan(initialState.values.todos) || '';
+            }
+        } catch (_) {
+
+        }
+
+
         try {
             await this.processStream(stream)
         } catch (error) {
@@ -129,6 +142,9 @@ class StreamingAgent {
             }
             throw error;  // unexpected error — let the route send an `error` event
         }
+
+        const interruptResult = await this.checkInterrupts();
+        if (interruptResult) return interruptResult;
 
         return await this.finalizeRun();
     }
@@ -143,6 +159,24 @@ class StreamingAgent {
 
         return { reply: this.reply || '(no reply)', chart, plan, replyStreamed: this.replyStreamed };
 
+    }
+
+    async checkInterrupts() {
+        const threadId = this.runConfig.configurable.thread_id;
+        const state = await this.activeAgent.getState({ configurable: { thread_id: threadId } });
+        const interrupts = (state.tasks || []).flatMap(task => task.interrupts || []);
+
+        console.log("checking for interrupts ");
+        console.log(interrupts);
+        if (interrupts.length === 0) return null;
+        console.log("set pending approval for this session")
+        // remember how to resume this run, then ask the question as a normal reply
+        setPendingApproval(this.sessionId, {
+            threadId,
+            thinking: this.thinking,
+            input: this.userInput
+        });
+        return { reply: approvalReply(interrupts[0].value), chart: null, plan: null, replyStreamed: false };
     }
 
 
