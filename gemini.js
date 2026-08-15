@@ -44,6 +44,10 @@ const modelWithSearch = new ChatGoogle({
   { googleSearchRetrieval: {} },
 ]);
 
+const {
+  injectionDetectionMiddleware,
+} = require('./admin/modules/security.js');
+
 const tools = [
   getCompletedOrdersTool,
   getCompletedOrdersForProductTool,
@@ -94,11 +98,17 @@ For any request that involves two or more distinct actions, you MUST call write_
 If the admin rejects a plan or action without giving specific feedback, ask the admin politely what changes they would like to make or how they would prefer you to proceed. Do NOT execute any tools until they clarify.
 If the admin provides specific feedback when rejecting, create a revised plan using write_todos that incorporates their feedback.`;
 
+const middlewares = [
+  injectionDetectionMiddleware,
+  todoListMiddleware(),
+  approvalMiddleware
+]
+
 const agent = createAgent({
   model,
   tools,
   systemPrompt: prompt,
-  middleware: [todoListMiddleware(), approvalMiddleware],
+  middlewares,
   checkpointer
 });
 
@@ -106,7 +116,7 @@ const thinkingAgent = createAgent({
   model,
   tools,
   systemPrompt: prompt,
-  middleware: [todoListMiddleware(), approvalMiddleware, thoughtMiddleware],
+  middlewares: [...middlewares, thoughtMiddleware],
   checkpointer
 });
 
