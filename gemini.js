@@ -1,5 +1,6 @@
 const { createAgent, todoListMiddleware } = require("langchain");
-const { ChatGoogle } = require("@langchain/google/node");
+// const { ChatGoogle } = require("@langchain/google/node");
+const {ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 
 const {
   getCompletedOrdersTool,
@@ -31,13 +32,16 @@ const { approvalMiddleware } = require('./admin/modules/approval');
 const { MemorySaver } = require('@langchain/langgraph');
 const checkpointer  = new MemorySaver();
 
-const model = new ChatGoogle({
+const model = new ChatGoogleGenerativeAI({
   model: "gemini-3.1-flash-lite",
   apiKey: process.env.GEMINI_API_KEY,
-  includeThoughts: true,
-});
+  thinkingConfig: {
+      includeThoughts: true,
+      thinkingLevel: "high"
+  }
+})
 
-const modelWithSearch = new ChatGoogle({
+const modelWithSearch = new ChatGoogleGenerativeAI({
   model: "gemini-2.5-flash",
   apiKey: process.env.GEMINI_API_KEY,
 }).bindTools([
@@ -65,12 +69,18 @@ const tools = [
   getCurrentDateTimeTool,
 ];
 
-const modelWithTools = new ChatGoogle({
+const modelWithTools = new ChatGoogleGenerativeAI({
   model: "gemini-3.1-flash-lite",
   apiKey: process.env.GEMINI_API_KEY,
+  thinkingConfig: {
+    includeThoughts: true,
+    thinkingLevel: "high"
+  }
 }).bindTools(tools);
 
 const prompt = `You are a helpful admin assistant for an ecommerce store. Format your responses using markdown.
+
+Before choosing tools or planning actions, reason through the admin's request, assess the necessary parameters and data thresholds, and evaluate your business logic.
 
 You ONLY help with ecommerce administration tasks such as:
 - Checking stock levels and sales data
@@ -108,7 +118,7 @@ const agent = createAgent({
   model,
   tools,
   systemPrompt: prompt,
-  middlewares,
+  middleware: middlewares,
   checkpointer
 });
 
@@ -116,7 +126,7 @@ const thinkingAgent = createAgent({
   model,
   tools,
   systemPrompt: prompt,
-  middlewares: [...middlewares, thoughtMiddleware],
+  middleware: [...middlewares, thoughtMiddleware],
   checkpointer
 });
 

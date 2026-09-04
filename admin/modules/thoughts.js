@@ -5,12 +5,12 @@ const { createMiddleware } = require('langchain');
 // Same pattern as the chart store: drain it after the run completes.
 const thoughtStore = new Map();
 
-// When includeThoughts is on, reasoning arrives as content blocks marked thought: true
+// When includeThoughts is on, reasoning arrives as content blocks with type: 'thinking' (or thought: true)
 function extractThoughtBlocks(content) {
   if (!Array.isArray(content)) return [];
   return content
-    .filter(part => part && part.thought === true && part.text)
-    .map(part => part.text);
+    .filter(part => part && (part.thought === true || part.type === 'thinking') && (part.thinking || part.text))
+    .map(part => part.thinking || part.text);
 }
 
 const thoughtMiddleware = createMiddleware({
@@ -43,7 +43,11 @@ const thoughtMiddleware = createMiddleware({
         ['system', 'You explain AI agent decisions in one short sentence.'],
         ['human', `The user asked: "${lastHuman?.content}". The agent decided to call: ${toolCallText}. In one short sentence, explain why.`]
       ], {tags: ["justification"]});
-      const text = typeof justification.content === 'string' ? justification.content : '';
+      const text = typeof justification.content === 'string'
+        ? justification.content
+        : (Array.isArray(justification.content)
+            ? justification.content.filter(p => p.type === 'text' || (!p.thought && p.type !== 'thinking')).map(p => p.text || (typeof p === 'string' ? p : '')).join('')
+            : '');
       console.log("Custom created justification =", text);
       if (text) thoughts = [text];
     }
@@ -57,12 +61,16 @@ const thoughtMiddleware = createMiddleware({
 
 // Read and remove the thoughts for a session, so they never leak into the next run
 function takeThoughts(sessionId) {
-    console.log("thoughtStore =", thoughtStore)
   const t = thoughtStore.get(String(sessionId));
   thoughtStore.delete(String(sessionId));
   return t || [];
 }
 
+// Read without removing the thoughts for a session
+function peekThoughts(sessionId) {
+  return thoughtStore.get(String(sessionId)) || [];
+}
+
 module.exports = {
-  extractThoughtBlocks, thoughtMiddleware, takeThoughts,
+  extractThoughtBlocks, thoughtMiddleware, takeThoughts, peekThoughts
 };

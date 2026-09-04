@@ -4,24 +4,46 @@ const approvalMiddleware = humanInTheLoopMiddleware({
     interruptOn: {
         write_todos: {
             allowedDecisions: ["approve", "reject"],
-            when: ({ state }) => {
+            when: ({ state, toolCall }) => {
 
                 if (!state.messages || state.messages.length === 0) {
                     return false;
                 }
 
-                const lastWriteTodoMesage = [...state.messages].reverse().find(
+                const lastWriteTodoMessage = [...state.messages].reverse().find(
                     msg => (msg.name || msg.tool_name) === 'write_todos'
                 );
 
-                if (!lastWriteTodoMesage) {
+                // No previous write_todos result means this is the first plan.
+                if (!lastWriteTodoMessage) {
                     return true;
                 }
 
-                if (lastWriteTodoMesage.status === "error") {
+                // A rejected write_todos call produces a ToolMessage
+                // whose status is "error". Ask for approval again.
+                if (lastWriteTodoMessage.status === "error") {
                     return true;
                 }
 
+                const currentTodos = state.todos || [];
+                const proposedTodos = toolCall.args.todos || [];
+
+                // A different number of tasks means the plan has changed.
+                if (currentTodos.length !== proposedTodos.length) {
+                    return true;
+                }
+
+                // Compare task descriptions but ignore their statuses.
+                // Status changes are normal progress updates and do not
+                // require the plan to be approved again.
+                for (let index = 0; index < currentTodos.length; index++) {
+                    if (currentTodos[index].content !== proposedTodos[index].content) {
+                        return true;
+                    }
+                }
+
+                // The task descriptions have not changed.
+                // Only their statuses may have changed.
                 return false;
             },
             description: (toolCall) => {
@@ -49,7 +71,8 @@ const pendingApprovals = new Map();
  * @param {
  *  threadId: string,
  *  thinking: boolean,
- *  input: string
+ *  input: string,
+ *  acountCount: integer
  * } pending - The pending approval object, which contains the thread ID, thinking status, and input message
  */
 function setPendingApproval(sessionId, pending) {
@@ -115,6 +138,33 @@ function parseDecision(text) {
 }
 
 
+function buildResumeDecisions(decisions, actionCount) {
+    let suppliedDecisions;
 
+    if (Array.isArray(decisions)) {
+        suppliedDecisions = decisions;
+    } else {
+        suppliedDecisions = [decisions];
+    }
 
-module.exports = { approvalMiddleware, setPendingApproval, takePendingApproval, hasPendingApproval, formatApproval, approvalReply, parseDecision };
+    // The caller already supplied multiple decisions.
+    if (suppliedDecisions.length !== 1) {
+        return suppliedDecisions;
+    }
+
+    const resumeDecisions = [];
+
+    // Apply the single yes/no answer to every interrupted action.
+    for (let index = 0; index < actionCount; index++) {
+        const decisionCopy = Object.assign(
+            {},
+            suppliedDecisions[0]
+        );
+
+        resumeDecisions.push(decisionCopy);
+    }
+
+    return resumeDecisions;
+}
+
+module.exports = { approvalMiddleware, setPendingApproval, takePendingApproval, hasPendingApproval, formatApproval, approvalReply, parseDecision, buildResumeDecisions };

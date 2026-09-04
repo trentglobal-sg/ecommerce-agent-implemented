@@ -9,7 +9,8 @@ const { setPendingApproval, approvalReply } = require('./approval');
 function extractReplyText(content) {
     if (Array.isArray(content)) {
         return content
-            .map(part => (typeof part === 'string' ? part : (part && part.thought === true ? '' : part.text || '')))
+            .filter(part => typeof part === 'string' || (part && !part.thought && part.type !== 'thinking'))
+            .map(part => (typeof part === 'string' ? part : part.text || ''))
             .join('');
     }
     return content ? content.toString() : '';
@@ -49,10 +50,33 @@ class StreamingAgent {
         this.onEvent('chunk', { text });
     }
 
+    streamNewThoughts() {
+        const thoughts = peekThoughts(this.sessionId);
+        if (thoughts.length > this.streamedThoughts) {
+            const newThoughts = thoughts.slice(this.streamedThoughts);
+            for (const t of newThoughts) {
+                this.chunk(`\n\n> 💭 *${t}*`);
+            }
+            this.streamedThoughts = thoughts.length;
+        }
+    }
+
     processTokens = async (data, event) => {
+        if (event?.tags?.includes('justification')) return;
         const c = data.chunk;
         // if there's no content, return
         if (!c || !c.content) return;
+
+        // If content is an array, it might contain thoughts or tool calls
+        if (Array.isArray(c.content)) {
+            for (const part of c.content) {
+                const thoughtText = (part && (part.thought === true || part.type === 'thinking')) ? (part.thinking || part.text) : null;
+                if (thoughtText) {
+                    this.chunk(`\n\n> 💭 *${thoughtText}*`);
+                }
+            }
+        }
+
         // if content is not a string, return immediately, as arrays hold thoughts or tool calls
         if (typeof c.content !== 'string') return;
         // if there are tool call chunks, return (a tool-call turn, not reply text)
@@ -63,7 +87,9 @@ class StreamingAgent {
         this.replyStreamed = true;
     }
 
-    processChatModelEnd = async (data) => {
+    processChatModelEnd = async (data, event) => {
+        this.streamNewThoughts();
+        if (event?.tags?.includes('justification')) return;
         const output = data.output;
         if (output && (!output.tool_calls || output.tool_calls.length === 0)) {
             // a turn with no tool calls ends the agent loop, so this is the reply
@@ -72,14 +98,13 @@ class StreamingAgent {
     }
 
     processToolStart = async (data, event) => {
+        this.streamNewThoughts();
         if (event.name === 'write_todos') return;  // the plan chunk follows from the state update
         this.chunk(`\n\n🔧 *Calling \`${event.name}\`...*`);
     }
 
     processToolEnd = async (data, event) => {
-        function processToolEnd(data, event) {
-            if (event.name !== 'write_todos') chunk(' ✔️');
-        }
+        if (event.name !== 'write_todos') this.chunk(' ✔️');
     }
 
     processPlan = async (data) => {
@@ -154,6 +179,8 @@ class StreamingAgent {
             throw error;  // unexpected error — let the route send an `error` event
         }
 
+        // NEW: if the run was paused for approval, do NOT finalize —
+        // nothing is saved to history until the run actually completes
         const interruptResult = await this.checkInterrupts();
         if (interruptResult) return interruptResult;
 
@@ -161,34 +188,63 @@ class StreamingAgent {
     }
 
     async finalizeRun() {
+        this.streamNewThoughts();
         const chart = takeChartConfig(this.sessionId);
         const plan = this.todos ? extractPlan(this.todos) : null;
-        takeThoughts(this.sessionId);  // drain display-only thoughts; not saved to history
+        const thoughts = takeThoughts(this.sessionId);  // drain display-only thoughts; not saved to history
 
         await this.history.addUserMessage(this.userInput);
         await this.history.addAIChatMessage(this.reply || '(no reply)', chart);
 
-        return { reply: this.reply || '(no reply)', chart, plan, replyStreamed: this.replyStreamed };
+        return { reply: this.reply || '(no reply)', chart, plan, thoughts, replyStreamed: this.replyStreamed };
 
     }
 
+    // After the stream ends, ask the checkpointer whether the run was
+    // paused for approval. Returns an approval-request result if so,
+    // or null if the run completed normally.
     async checkInterrupts() {
-        const threadId = this.runConfig.configurable.thread_id;
-        const state = await this.activeAgent.getState({ configurable: { thread_id: threadId } });
-        const interrupts = (state.tasks || []).flatMap(task => task.interrupts || []);
+        const threadId =
+            this.runConfig.configurable.thread_id;
 
-        console.log("checking for interrupts ");
-        console.log(interrupts);
-        if (interrupts.length === 0) return null;
-        console.log("set pending approval for this session")
-        // remember how to resume this run, then ask the question as a normal reply
+        const state = await this.activeAgent.getState({
+            configurable: {
+                thread_id: threadId
+            }
+        });
+
+        const interrupts = (state.tasks || []).flatMap(
+            function (task) {
+                return task.interrupts || [];
+            }
+        );
+
+        if (interrupts.length === 0) {
+            return null;
+        }
+
+        const hitlRequest = interrupts[0].value;
+
+        // Save everything required to resume the streaming run.
         setPendingApproval(this.sessionId, {
             threadId,
             thinking: this.thinking,
-            input: this.userInput
+            input: this.userInput,
+
+            // LangChain requires one decision for every interrupted action.
+            actionCount: hitlRequest.actionRequests.length
         });
-        return { reply: approvalReply(interrupts[0].value), chart: null, plan: null, replyStreamed: false };
+
+        // Return the complete approval request to the chat interface.
+        return {
+            reply: approvalReply(hitlRequest),
+            chart: null,
+            plan: null,
+            replyStreamed: false
+        };
     }
+
+
 
 
 }

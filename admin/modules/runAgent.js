@@ -7,7 +7,7 @@ const { takeThoughts } = require('./thoughts');
 
 
 const { Command } = require('@langchain/langgraph');
-const { setPendingApproval, takePendingApproval, approvalReply } = require('./approval');
+const { setPendingApproval, takePendingApproval, approvalReply, buildResumeDecisions } = require('./approval');
 const { randomUUID } = require('crypto');
 
 
@@ -60,10 +60,26 @@ async function runAgent(input, config, thinking = false) {
     throw error;  // Some other error — let the route's error handler deal with it
   }
 
-  if (response.__interrupt__) {
-    // save thread_id for later resume, including the thinking flag and input
-    setPendingApproval(sessionId, { threadId, thinking, input: input.input });
-    return { reply: approvalReply(response.__interrupt__[0].value), chart: null, plan: null, thoughts: null };
+ if (response.__interrupt__) {
+    const hitlRequest = response.__interrupt__[0].value;
+
+    // Save everything required to resume this run.
+    setPendingApproval(sessionId, {
+      threadId,
+      thinking,
+      input: input.input,
+
+      // LangChain requires one decision for every interrupted action.
+      actionCount: hitlRequest.actionRequests.length
+    });
+
+    // Return the complete approval request to the chat interface.
+    return {
+      reply: approvalReply(hitlRequest),
+      chart: null,
+      plan: null,
+      thoughts: null
+    };
   }
 
   return await finalizeRun(history, response, sessionId, input.input);
@@ -101,31 +117,69 @@ async function finalizeRun(history, response, sessionId, input) {
 }
 
 async function resumeAgent(sessionId, decisions) {
-  const history = new MariaDBChatHistory(sessionId );
+  const history = new MariaDBChatHistory(sessionId);
   const pending = takePendingApproval(sessionId);
+
   if (!pending) {
-    throw new Error('No pending approval found for this session');
+    throw new Error(
+      'No pending approval found for this session'
+    );
   }
 
-  const activeAgent = pending.thinking ? thinkingAgent : agent;
+  const activeAgent = pending.thinking
+    ? thinkingAgent
+    : agent;
+
+  // Convert the user's one yes/no answer into one decision
+  // for every interrupted action.
+  const resumeDecisions = buildResumeDecisions(
+    decisions,
+    pending.actionCount
+  );
+
   const resumeCommand = new Command({
     resume: {
-      decisions: Array.isArray(decisions) ? decisions : [decisions]
+      decisions: resumeDecisions
     }
   });
 
-  const response = await activeAgent.invoke(resumeCommand, {
-    configurable: { sessionId, thread_id: pending.threadId },
+  const runConfig = {
+    configurable: {
+      sessionId,
+      thread_id: pending.threadId
+    },
     recursionLimit: 50
-  });
+  };
 
-  // in case there are more interrupts
+  const response = await activeAgent.invoke(
+    resumeCommand,
+    runConfig
+  );
+
+  // The resumed agent may produce another approval request.
   if (response.__interrupt__) {
+    const hitlRequest = response.__interrupt__[0].value;
+
+    // The new interrupt may contain a different number of actions.
+    pending.actionCount = hitlRequest.actionRequests.length;
+
+    // Save the pending run again so it can be resumed another time.
     setPendingApproval(sessionId, pending);
-    return { reply: approvalReply(response.__interrupt__[0].value), chart: null, plan: null, thoughts: null };
+
+    return {
+      reply: approvalReply(hitlRequest),
+      chart: null,
+      plan: null,
+      thoughts: null
+    };
   }
 
-  return await finalizeRun(history, response, sessionId, pending.input);
+  return await finalizeRun(
+    history,
+    response,
+    sessionId,
+    pending.input
+  );
 }
 
 module.exports = { runAgent, resumeAgent };
