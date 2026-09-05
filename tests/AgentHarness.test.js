@@ -5,6 +5,7 @@ const { StreamedAgentRunner } = require('../admin/modules/StreamedAgentRunner');
 const { EcommerceStreamStrategy } = require('../admin/modules/EcommerceStreamStrategy');
 const { AgentRegistry } = require('../admin/modules/agentRegistry');
 const { Command } = require('@langchain/langgraph');
+const { shouldApprovePlan } = require('../admin/modules/approval');
 const {
   createHarness,
   replyDelta,
@@ -145,4 +146,27 @@ test('registry creates one isolated session facade per session', () => {
   assert.notEqual(registry.get(1), registry.get(2));
   registry.remove(1);
   assert.notEqual(registry.get(1), registry.get(2));
+});
+
+test('only the first successfully approved plan requires approval', () => {
+  const human = { _getType: () => 'human' };
+  const rejectedPlan = { name: 'write_todos', status: 'error' };
+  const approvedPlan = { name: 'write_todos', status: 'success' };
+
+  assert.equal(shouldApprovePlan({ state: { messages: [human] } }), true);
+  assert.equal(
+    shouldApprovePlan({ state: { messages: [human, rejectedPlan] } }),
+    true,
+    'a rejected initial plan still needs approval when revised'
+  );
+  assert.equal(
+    shouldApprovePlan({ state: { messages: [human, approvedPlan] } }),
+    false,
+    'changes after the first approved plan do not interrupt again'
+  );
+  assert.equal(
+    shouldApprovePlan({ state: { messages: [human, approvedPlan, rejectedPlan] } }),
+    false,
+    'once approved, later plan rewrites remain part of that workflow'
+  );
 });

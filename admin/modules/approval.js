@@ -1,51 +1,29 @@
 const { humanInTheLoopMiddleware } = require("langchain");
 
+// A plan needs approval until one write_todos call has completed successfully.
+// Once the admin has approved that first plan, later edits and status updates
+// are part of the same approved workflow and do not interrupt again.
+function shouldApprovePlan({ state }) {
+    if (!state.messages || state.messages.length === 0) {
+        return false;
+    }
+
+    const previousPlanResults = state.messages.filter(
+        message => (message.name || message.tool_name) === 'write_todos'
+    );
+
+    const hasApprovedPlan = previousPlanResults.some(
+        message => message.status !== 'error'
+    );
+
+    return !hasApprovedPlan;
+}
+
 const approvalMiddleware = humanInTheLoopMiddleware({
     interruptOn: {
         write_todos: {
             allowedDecisions: ["approve", "reject"],
-            when: ({ state, toolCall }) => {
-
-                if (!state.messages || state.messages.length === 0) {
-                    return false;
-                }
-
-                const lastWriteTodoMessage = [...state.messages].reverse().find(
-                    msg => (msg.name || msg.tool_name) === 'write_todos'
-                );
-
-                // No previous write_todos result means this is the first plan.
-                if (!lastWriteTodoMessage) {
-                    return true;
-                }
-
-                // A rejected write_todos call produces a ToolMessage
-                // whose status is "error". Ask for approval again.
-                if (lastWriteTodoMessage.status === "error") {
-                    return true;
-                }
-
-                const currentTodos = state.todos || [];
-                const proposedTodos = toolCall.args.todos || [];
-
-                // A different number of tasks means the plan has changed.
-                if (currentTodos.length !== proposedTodos.length) {
-                    return true;
-                }
-
-                // Compare task descriptions but ignore their statuses.
-                // Status changes are normal progress updates and do not
-                // require the plan to be approved again.
-                for (let index = 0; index < currentTodos.length; index++) {
-                    if (currentTodos[index].content !== proposedTodos[index].content) {
-                        return true;
-                    }
-                }
-
-                // The task descriptions have not changed.
-                // Only their statuses may have changed.
-                return false;
-            },
+            when: shouldApprovePlan,
             description: (toolCall) => {
                 const lines = toolCall.args.todos.map((todo, index) => `${index + 1}. ${todo.content}`);
                 return '📋 **Proposed plan:**\n' + lines.join('\n');
@@ -140,4 +118,11 @@ function buildResumeDecisions(decisions, actionCount) {
     return resumeDecisions;
 }
 
-module.exports = { approvalMiddleware, formatApproval, approvalReply, parseDecision, buildResumeDecisions };
+module.exports = {
+    approvalMiddleware,
+    shouldApprovePlan,
+    formatApproval,
+    approvalReply,
+    parseDecision,
+    buildResumeDecisions
+};
