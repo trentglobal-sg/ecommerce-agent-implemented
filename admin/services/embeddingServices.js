@@ -25,8 +25,6 @@ function chunkText(text, chunkSize = 500, overlap = 50) {
   // TODO(student): split the extracted text into overlapping chunks.
   // This one-chunk fallback keeps PDF processing safe while the exercise is
   // incomplete; PDF upload and extraction remain instructor-provided.
-  void chunkSize;
-  void overlap;
   const normalized = (text || '').trim();
   return normalized ? [normalized] : [];
 }

@@ -37,7 +37,7 @@ test('starter EcommerceAgent runs without calling an external model', async () =
     async addAIChatMessage(content) { this.saved.push(content); }
   };
   const runtime = new AgentSessionContext({ sessionId: 10, history });
-  const agent = new EcommerceAgent({ model: {}, runtime });
+  const agent = new EcommerceAgent({}, runtime);
   const result = await new AgentRunner(agent, runtime).run({ message: 'Hello' });
 
   assert.equal(result.reply, PLACEHOLDER_REPLY);

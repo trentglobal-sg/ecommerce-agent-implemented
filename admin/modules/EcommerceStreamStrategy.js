@@ -24,31 +24,26 @@ class EcommerceStreamStrategy {
   handleReplyDelta(event) {
     // TODO(student): return a chunk frame containing event.text, and set
     // replyStarted so the final reply is not rendered twice.
-    void event;
     return [];
   }
 
   handleThought(event) {
     // TODO(student): return a chunk frame for a visible thought.
-    void event;
     return [];
   }
 
   handleToolStart(event) {
     // TODO(student): return a progress frame. write_todos is usually hidden.
-    void event;
     return [];
   }
 
   handleToolEnd(event) {
     // TODO(student): return a completion frame.
-    void event;
     return [];
   }
 
   handlePlanChange(event) {
     // TODO(student): return a frame containing the formatted plan.
-    void event;
     return [];
   }
 

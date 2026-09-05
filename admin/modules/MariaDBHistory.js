@@ -15,8 +15,6 @@ class MariaDBChatHistory extends BaseChatMessageHistory {
 
   async addMessage(message, chartConfig = null) {
     // TODO(student): store the role, content, and optional chart JSON.
-    void message;
-    void chartConfig;
   }
 
   async addUserMessage(content) {

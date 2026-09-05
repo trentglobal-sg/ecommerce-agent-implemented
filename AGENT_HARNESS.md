@@ -12,9 +12,9 @@ the LangChain configuration is ready.
 `admin/modules/EcommerceAgent.js` exposes four intentional TODO hooks:
 
 - `getSystemPrompt()` defines the agent's role and rules.
-- `createTools({ services, output })` registers tools. `output.setChart()` is
+- `createTools(services, output)` registers tools. `output.setChart()` is
   the supported way for a tool to attach an ApexCharts configuration.
-- `createMiddleware({ model, output })` registers middleware in execution
+- `createMiddleware(model, output)` registers middleware in execution
   order. Thought middleware uses `output.addThought()`/`addThoughts()`.
 - `createRunnable(configuration)` performs the LangChain `createAgent()` call.
 

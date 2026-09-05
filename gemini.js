@@ -23,7 +23,7 @@ const modelWithTools = new ChatGoogleGenerativeAI({
 
 const agentRegistry = new AgentRegistry((sessionId) => {
   const runtime = new AgentSessionContext({ sessionId });
-  const agent = new EcommerceAgent({ model, runtime });
+  const agent = new EcommerceAgent(model, runtime);
   return new AgentSession({ agent, runtime });
 });
 

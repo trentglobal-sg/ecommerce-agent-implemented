@@ -4,7 +4,6 @@ const { stubTool } = require('./stubTool');
 // output.setChart(chartConfig). The route and frontend already know how to
 // transport and render the resulting chart.
 function createApexChartTool(output) {
-  void output;
   return stubTool('generate_apex_chart');
 }
 

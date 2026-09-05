@@ -2,8 +2,7 @@
 // Import completed tools and return them from buildTools when ready.
 const sharedTools = [];
 
-function buildTools({ output }) {
-  void output;
+function buildTools(output) {
   return [];
 }
 

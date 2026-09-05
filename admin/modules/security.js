@@ -2,7 +2,6 @@ const { createMiddleware } = require('langchain');
 
 // STUDENT FILE: implement prompt-injection detection and a beforeModel hook.
 function looksLikeInjection(text) {
-  void text;
   return false;
 }
 
