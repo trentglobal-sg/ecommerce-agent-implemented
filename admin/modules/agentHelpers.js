@@ -5,6 +5,16 @@ function extractText(content) {
   return content ? content.toString() : '';
 }
 
+function extractReplyText(content) {
+  if (Array.isArray(content)) {
+    return content
+      .filter(part => typeof part === 'string' || (part && !part.thought && part.type !== 'thinking'))
+      .map(part => typeof part === 'string' ? part : part.text || '')
+      .join('');
+  }
+  return content ? content.toString() : '';
+}
+
 // The todoListMiddleware stores the agent's plan in the state as an array of
 // { content, status } objects. We format it as a markdown list for the chat bubble.
 function extractPlan(todos) {
@@ -19,4 +29,4 @@ function isRecursionLimitError(error) {
   return error && error.lc_error_code === 'GRAPH_RECURSION_LIMIT';
 }
 
-module.exports = { extractText, extractPlan, isRecursionLimitError }
+module.exports = { extractText, extractReplyText, extractPlan, isRecursionLimitError }

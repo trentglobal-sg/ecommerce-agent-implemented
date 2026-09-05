@@ -1,12 +1,9 @@
 const { tool } = require('@langchain/core/tools');
 const { z } = require('zod');
 
-// Charts generated during a run, keyed by chat session. The model never sees
-// the config itself, so it cannot echo it into its reply text.
-const chartStore = new Map();
-
-const generateApexChartTool = tool(
-  async ({ type, title, series, categories, xaxisTitle, yaxisTitle }, config) => {
+function createApexChartTool(output) {
+  return tool(
+  async ({ type, title, series, categories, xaxisTitle, yaxisTitle }) => {
     const isRadial = type === 'pie' || type === 'donut';
 
     const chartConfig = {
@@ -25,12 +22,7 @@ const generateApexChartTool = tool(
       chartConfig.yaxis = { title: { text: yaxisTitle } };
     }
 
-    // The second argument is the run's config, which carries the sessionId
-    // that runAgent passes in via configurable
-    const sessionId = config?.configurable?.sessionId;
-    if (sessionId != null) {
-      chartStore.set(String(sessionId), chartConfig);
-    }
+    output.setChart(chartConfig);
 
     return JSON.stringify({
       success: true,
@@ -52,14 +44,7 @@ const generateApexChartTool = tool(
       yaxisTitle: z.string().optional().describe('Y-axis title (for bar/line charts)'),
     }),
   }
-);
-
-// Read and remove the chart for a session, so a stale chart never leaks
-// into the session's next run
-function takeChartConfig(sessionId) {
-  const chart = chartStore.get(String(sessionId));
-  chartStore.delete(String(sessionId));
-  return chart || null;
+  );
 }
 
-module.exports = { generateApexChartTool, takeChartConfig };
+module.exports = { createApexChartTool };

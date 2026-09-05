@@ -63,33 +63,6 @@ const approvalMiddleware = humanInTheLoopMiddleware({
     }
 });
 
-const pendingApprovals = new Map();
-
-/**
- * Store pending approval for a session
- * @param {string} sessionId - The session ID
- * @param {
- *  threadId: string,
- *  thinking: boolean,
- *  input: string,
- *  acountCount: integer
- * } pending - The pending approval object, which contains the thread ID, thinking status, and input message
- */
-function setPendingApproval(sessionId, pending) {
-    pendingApprovals.set(String(sessionId), pending);
-}
-
-
-function takePendingApproval(sessionId) {
-    const pending = pendingApprovals.get(String(sessionId));
-    pendingApprovals.delete(String(sessionId));
-    return pending || null;
-}
-
-function hasPendingApproval(sessionId) {
-    return pendingApprovals.has(String(sessionId));
-}
-
 // Turn the raw interrupt payload into a markdown description of what the
 // agent wants to do (the middleware built one per action; join them)
 function formatApproval(hitlRequest) {
@@ -167,4 +140,4 @@ function buildResumeDecisions(decisions, actionCount) {
     return resumeDecisions;
 }
 
-module.exports = { approvalMiddleware, setPendingApproval, takePendingApproval, hasPendingApproval, formatApproval, approvalReply, parseDecision, buildResumeDecisions };
+module.exports = { approvalMiddleware, formatApproval, approvalReply, parseDecision, buildResumeDecisions };
