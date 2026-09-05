@@ -1,15 +1,6 @@
-const { generateEmbedding } = require('../services/embeddingServices');
-
-let poleEmbeddings = null;
+// STUDENT FILE: generate and cache positive/negative semantic pole embeddings.
 async function getPoleEmbeddings() {
-  if (!poleEmbeddings) {
-    const [positive, negative] = await Promise.all([
-      generateEmbedding('things customers love and praise about this product'),
-      generateEmbedding('things customers complain about, dislike, or had problems with')
-    ]);
-    poleEmbeddings = { positive, negative };
-  }
-  return poleEmbeddings;
+  return { positive: [], negative: [] };
 }
 
 module.exports = { getPoleEmbeddings };

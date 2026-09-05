@@ -1,11 +1,15 @@
-# Agent teaching surface
+# Student starter: agent teaching surface
 
 The HTTP routes and runner lifecycle are completed infrastructure. Students
 work on the parts that describe what the ecommerce agent is and can do.
 
 ## Student-editable hooks
 
-`admin/modules/EcommerceAgent.js` exposes four intentional hooks:
+The application initially uses `StarterAgentRunnable`, so the server and chat
+UI work before any model calls are enabled. Replace that fallback only when
+the LangChain configuration is ready.
+
+`admin/modules/EcommerceAgent.js` exposes four intentional TODO hooks:
 
 - `getSystemPrompt()` defines the agent's role and rules.
 - `createTools({ services, output })` registers tools. `output.setChart()` is
@@ -16,7 +20,8 @@ work on the parts that describe what the ecommerce agent is and can do.
 
 The optional streaming exercise lives in
 `admin/modules/EcommerceStreamStrategy.js`. Its handlers receive normalized
-events and return complete frontend frames. Students never edit the event
+events and currently return no frames; the final `done` frame still displays
+the placeholder response. Students never edit the event
 loop, approval resumption, checkpoints, history finalization, or routes.
 
 ## Normalized streaming events
@@ -46,3 +51,17 @@ Do not make student exercises in these files:
 
 The routes call only `session.respond()` or `session.stream()` and forward the
 agent layer's output unchanged.
+
+## Suggested implementation order
+
+1. Write one tool and register it in `createTools()`.
+2. Define the system prompt.
+3. Add middleware through `createMiddleware()`.
+4. Replace `StarterAgentRunnable` with `createAgent(configuration)`.
+5. Implement MariaDB history.
+6. Implement overlapping PDF chunking.
+7. Implement the MySQL operations in `admin/agent-services/`. The existing
+   `admin/services/` directory remains completed because the non-agent admin
+   pages depend on it.
+8. Complete the remaining tools and middleware.
+9. Optionally implement the normalized streaming strategy handlers.

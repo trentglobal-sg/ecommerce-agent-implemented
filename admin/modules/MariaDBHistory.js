@@ -1,13 +1,7 @@
 const { BaseChatMessageHistory } = require('@langchain/core/chat_history');
-const { HumanMessage, AIMessage } = require('@langchain/core/messages');
-const pool = require('../../database');
 
-function parseChartConfig(value) {
-  if (!value) return null;
-  if (Buffer.isBuffer(value)) value = value.toString('utf8');
-  return typeof value === 'string' ? JSON.parse(value) : value;
-}
-
+// STUDENT FILE: implement persistent LangChain history using chat_messages.
+// These safe defaults keep the chat page and placeholder agent runnable.
 class MariaDBChatHistory extends BaseChatMessageHistory {
   constructor(sessionId) {
     super();
@@ -15,37 +9,26 @@ class MariaDBChatHistory extends BaseChatMessageHistory {
   }
 
   async getMessages() {
-    const [rows] = await pool.execute(
-      `SELECT role, content, chart_config FROM chat_messages WHERE session_id = ? ORDER BY created_at ASC`,
-      [this.sessionId]
-    );
-    return rows.map(row => {
-      const msg = row.role === 'human'
-        ? new HumanMessage(row.content)
-        : new AIMessage(row.content);
-      msg.chartConfig = parseChartConfig(row.chart_config);
-      return msg;
-    });
+    // TODO(student): read ordered rows and convert them to LangChain messages.
+    return [];
   }
 
   async addMessage(message, chartConfig = null) {
-    const role = message._getType() === 'human' ? 'human' : 'ai';
-    await pool.execute(
-      `INSERT INTO chat_messages (session_id, role, content, chart_config) VALUES (?, ?, ?, ?)`,
-      [this.sessionId, role, message.content, chartConfig ? JSON.stringify(chartConfig) : null]
-    );
+    // TODO(student): store the role, content, and optional chart JSON.
+    void message;
+    void chartConfig;
   }
 
   async addUserMessage(content) {
-    await this.addMessage(new HumanMessage(content));
+    return this.addMessage({ _getType: () => 'human', content });
   }
 
   async addAIChatMessage(content, chartConfig = null) {
-    await this.addMessage(new AIMessage(content), chartConfig);
+    return this.addMessage({ _getType: () => 'ai', content }, chartConfig);
   }
 
   async clear() {
-    await pool.execute(`DELETE FROM chat_messages WHERE session_id = ?`, [this.sessionId]);
+    // TODO(student): delete messages for only this session.
   }
 }
 

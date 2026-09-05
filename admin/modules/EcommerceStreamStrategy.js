@@ -1,7 +1,8 @@
-const { extractPlan } = require('./agentHelpers');
-
-// The one student-customizable streaming surface. It receives semantic agent
-// events, and its handlers return complete frontend frames.
+// STUDENT FILE (optional streaming lesson)
+//
+// AgentRunner supplies normalized events. Implement the handler methods to
+// return arrays of complete frames. Returning [] is always safe, so the final
+// `done` frame keeps the application working before this exercise is complete.
 class EcommerceStreamStrategy {
   constructor(frameWriter) {
     this.frameWriter = frameWriter;
@@ -21,28 +22,34 @@ class EcommerceStreamStrategy {
   }
 
   handleReplyDelta(event) {
-    const prefix = this.replyStarted ? '' : '\n\n---\n\n';
-    this.replyStarted = true;
-    return [this.chunk(prefix + event.text)];
+    // TODO(student): return a chunk frame containing event.text, and set
+    // replyStarted so the final reply is not rendered twice.
+    void event;
+    return [];
   }
 
   handleThought(event) {
-    return [this.chunk(`\n\n> 💭 *${event.text}*`)];
+    // TODO(student): return a chunk frame for a visible thought.
+    void event;
+    return [];
   }
 
   handleToolStart(event) {
-    if (event.name === 'write_todos') return [];
-    return [this.chunk(`\n\n🔧 *Calling \`${event.name}\`...*`)];
+    // TODO(student): return a progress frame. write_todos is usually hidden.
+    void event;
+    return [];
   }
 
   handleToolEnd(event) {
-    if (event.name === 'write_todos') return [];
-    return [this.chunk(' ✔️')];
+    // TODO(student): return a completion frame.
+    void event;
+    return [];
   }
 
   handlePlanChange(event) {
-    const plan = event.text || extractPlan(event.todos);
-    return plan ? [this.chunk(`\n\n${plan}`)] : [];
+    // TODO(student): return a frame containing the formatted plan.
+    void event;
+    return [];
   }
 
   complete(result) {

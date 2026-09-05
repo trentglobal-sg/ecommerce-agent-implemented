@@ -15,14 +15,11 @@ const modelWithSearch = new ChatGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY
 }).bindTools([{ googleSearchRetrieval: {} }]);
 
-// Retained for existing direct-model callers. Session-bound tools such as the
-// chart tool are registered by EcommerceAgent instead.
-const { sharedTools } = require('./admin/tools');
 const modelWithTools = new ChatGoogleGenerativeAI({
   model: 'gemini-3.1-flash-lite',
   apiKey: process.env.GEMINI_API_KEY,
   thinkingConfig: { includeThoughts: true, thinkingLevel: 'high' }
-}).bindTools(sharedTools);
+}).bindTools([]);
 
 const agentRegistry = new AgentRegistry((sessionId) => {
   const runtime = new AgentSessionContext({ sessionId });

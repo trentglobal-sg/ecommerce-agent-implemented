@@ -2,7 +2,7 @@ const { HumanMessage } = require('@langchain/core/messages');
 const { Command } = require('@langchain/langgraph');
 const { randomUUID } = require('crypto');
 const { extractReplyText, extractPlan, isRecursionLimitError } = require('./agentHelpers');
-const { parseDecision, approvalReply, buildResumeDecisions } = require('./approval');
+const { parseDecision, approvalReply, buildResumeDecisions } = require('./approvalRuntime');
 const { AgentEventNormalizer } = require('./AgentEventNormalizer');
 
 const RECURSION_LIMIT_REPLY = 'I was not able to finish that request — it needed more steps than I am allowed to take. Could you break it into smaller requests?';

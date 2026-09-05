@@ -1,5 +1,10 @@
 const { extractPlan } = require('./agentHelpers');
-const { extractThoughtBlocks } = require('./thoughts');
+function extractThoughtBlocks(content) {
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter(part => part && (part.thought === true || part.type === 'thinking') && (part.thinking || part.text))
+    .map(part => part.thinking || part.text);
+}
 
 // Converts version/provider-specific LangChain events into the small semantic
 // event vocabulary consumed by the result collector and streaming strategy.
